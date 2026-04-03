@@ -131,6 +131,35 @@ async def analyze_food(file: UploadFile = File(...)):
         print(f"❌ ERROR: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
+class SearchRequest(BaseModel):
+    query: str
+
+@app.post("/search-food")
+async def search_food(request: SearchRequest):
+    try:
+        prompt = f"""You are an expert nutritionist with deep knowledge of all global cuisines, including Indian food.
+The user searched for: "{request.query}"
+
+Provide accurate nutrition information for this specific food item.
+Respond ONLY in this exact format — no extra text, no markdown, no explanation:
+Dish Name: <exact name>
+Estimated Portion: <standard portion>
+Total Calories: <kcal number only>
+Protein: <grams number only>
+Carbs: <grams number only>
+Fat: <grams number only>"""
+        print(f"🔍 Searching AI for: {request.query}")
+        response = client.chat.completions.create(
+            model="meta-llama/llama-3.1-8b-instruct:free",
+            messages=[{"role": "user", "content": prompt}]
+        )
+        text_output = response.choices[0].message.content.strip()
+        parsed = parse_nutrition_response(text_output)
+        return {"success": True, "raw_response": text_output, "parsed": parsed}
+    except Exception as e:
+        print(f"❌ SEARCH ERROR: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
 
 # ── PANTRY ARCHITECT ENDPOINT ─────────────────────────────
 class PantryRequest(BaseModel):
