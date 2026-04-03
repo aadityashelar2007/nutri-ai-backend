@@ -101,7 +101,7 @@ async def analyze_food(file: UploadFile = File(...)):
         )
 
         response = client.chat.completions.create(
-            model="qwen/qwen2.5-vl-32b-instruct:free",
+            model="openrouter/auto",
             messages=[
                 {
                     "role": "user",
