@@ -152,7 +152,7 @@ Carbs: <grams number only>
 Fat: <grams number only>"""
         print(f"🔍 Searching AI for: {request.query}")
         response = client.chat.completions.create(
-            model="mistralai/mistral-7b-instruct:free",
+            model=MODEL_NAME,
             messages=[{"role": "user", "content": prompt}]
         )
         text_output = response.choices[0].message.content.strip()
@@ -191,78 +191,56 @@ You may suggest maximum 1-2 optional extra ingredients per recipe.
 Rank them from best to worst match for their goal.
 Make the recipes realistic, practical and goal-aligned.
 
-Respond ONLY with this exact JSON format — no extra text, no markdown, no explanation:
-{{
+Respond ONLY with valid JSON and no extra text, no markdown, no explanation.
+Return an object with a "recipes" key containing exactly 3 recipe objects.
+Each recipe object must include these keys:
+- rank (integer)
+- emoji (string)
+- name (string)
+- description (string)
+- goalMatchPct (number)
+- goalMatchReason (string)
+- cal (number)
+- protein (number)
+- carbs (number)
+- fat (number)
+- fiber (number)
+- portion (string)
+- ingredientsUsed (array of strings)
+- optionalBoosts (array of strings)
+- cookingSteps (array of strings)
+- nutritionistTweak (string)
+- satietyScore (number)
+
+Example schema:
+{
   "recipes": [
-    {{
+    {
       "rank": 1,
-      "emoji": "🍛",
-      "name": "Recipe Name",
-      "description": "1-2 sentence description of the dish and why it suits the goal",
-      "goalMatchPct": 92,
-      "goalMatchReason": "Short reason why this matches the goal",
-      "cal": 350,
-      "protein": 25,
-      "carbs": 40,
-      "fat": 8,
-      "fiber": 6,
-      "portion": "1 bowl (300g)",
-      "ingredientsUsed": ["ingredient1", "ingredient2", "ingredient3"],
-      "optionalBoosts": ["optional ingredient"],
-      "cookingSteps": [
-        "Step 1 description",
-        "Step 2 description",
-        "Step 3 description",
-        "Step 4 description"
-      ],
-      "nutritionistTweak": "One specific professional tip to make it even healthier for the goal",
-      "satietyScore": 4.5
-    }},
-    {{
-      "rank": 2,
-      "emoji": "🥗",
-      "name": "Recipe Name",
-      "description": "Description",
-      "goalMatchPct": 85,
-      "goalMatchReason": "Reason",
-      "cal": 280,
-      "protein": 18,
-      "carbs": 35,
-      "fat": 6,
-      "fiber": 5,
-      "portion": "1 plate (250g)",
-      "ingredientsUsed": ["ingredient1", "ingredient2"],
-      "optionalBoosts": ["optional"],
-      "cookingSteps": ["Step 1", "Step 2", "Step 3", "Step 4"],
-      "nutritionistTweak": "Professional tip",
-      "satietyScore": 3.8
-    }},
-    {{
-      "rank": 3,
-      "emoji": "🍲",
-      "name": "Recipe Name",
-      "description": "Description",
-      "goalMatchPct": 78,
-      "goalMatchReason": "Reason",
-      "cal": 200,
-      "protein": 12,
-      "carbs": 28,
-      "fat": 4,
-      "fiber": 4,
-      "portion": "1 serving (200g)",
-      "ingredientsUsed": ["ingredient1", "ingredient2"],
-      "optionalBoosts": ["optional"],
-      "cookingSteps": ["Step 1", "Step 2", "Step 3", "Step 4"],
-      "nutritionistTweak": "Professional tip",
-      "satietyScore": 3.2
-    }}
+      "emoji": "string",
+      "name": "string",
+      "description": "string",
+      "goalMatchPct": 0,
+      "goalMatchReason": "string",
+      "cal": 0,
+      "protein": 0,
+      "carbs": 0,
+      "fat": 0,
+      "fiber": 0,
+      "portion": "string",
+      "ingredientsUsed": ["string"],
+      "optionalBoosts": ["string"],
+      "cookingSteps": ["string"],
+      "nutritionistTweak": "string",
+      "satietyScore": 0
+    }
   ]
-}}"""
+}"""
 
         print(f"🧑‍🍳 Generating recipes for: {ingredients_str} | Goal: {request.goal}")
 
         response = client.chat.completions.create(
-            model="mistralai/mistral-7b-instruct:free",
+            model=MODEL_NAME,
             messages=[
                 {
                     "role": "user",
