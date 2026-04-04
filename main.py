@@ -33,6 +33,8 @@ client = OpenAI(
     api_key=api_key,
 )
 
+MODEL_NAME = os.getenv("OPENROUTER_MODEL", "openrouter/auto")
+
 def compress_image(image_bytes: bytes) -> tuple[str, str]:
     """Compress image to under 1MB and return base64 + mime_type"""
     image = Image.open(io.BytesIO(image_bytes))
@@ -101,7 +103,7 @@ async def analyze_food(file: UploadFile = File(...)):
         )
 
         response = client.chat.completions.create(
-            model="openrouter/auto",
+            model=MODEL_NAME,
             messages=[
                 {
                     "role": "user",
