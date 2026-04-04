@@ -150,7 +150,7 @@ Carbs: <grams number only>
 Fat: <grams number only>"""
         print(f"🔍 Searching AI for: {request.query}")
         response = client.chat.completions.create(
-            model="meta-llama/llama-3.1-8b-instruct:free",
+            model="mistralai/mistral-7b-instruct:free",
             messages=[{"role": "user", "content": prompt}]
         )
         text_output = response.choices[0].message.content.strip()
