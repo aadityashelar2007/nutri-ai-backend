@@ -260,7 +260,7 @@ Respond ONLY with this exact JSON format — no extra text, no markdown, no expl
         print(f"🧑‍🍳 Generating recipes for: {ingredients_str} | Goal: {request.goal}")
 
         response = client.chat.completions.create(
-            model="openrouter/auto",
+            model="mistralai/mistral-7b-instruct:free",
             messages=[
                 {
                     "role": "user",
