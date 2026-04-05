@@ -239,10 +239,13 @@ Carbs: <grams number only>
 Fat: <grams number only>"""
             print(f"🔍 Searching AI for: {sanitized_query} (attempt {attempt + 1}/{max_retries + 1})")
             
-            response = client.chat.completions.create(
+            # Use asyncio.to_thread to prevent the synchronous client from blocking the server!
+            response = await asyncio.to_thread(
+                client.chat.completions.create,
                 model=MODEL_NAME,
                 messages=[{"role": "user", "content": prompt}]
             )
+            
             text_output = response.choices[0].message.content.strip()
             parsed = parse_nutrition_response(text_output)
             
@@ -273,6 +276,17 @@ Fat: <grams number only>"""
     
     raise RuntimeError("Max retries exceeded")
 
+
+async def safe_fetch(item: str):
+    """Wraps the search to isolate errors so one failed item doesn't crash the whole meal"""
+    try:
+        text_output, parsed = await _search_food_with_retry(item)
+        return item, parsed
+    except Exception as e:
+        print(f"⚠️ Skipping '{item}' due to AI error: {e}")
+        return item, None
+
+
 @app.post("/search-food")
 async def search_food(request: SearchRequest):
     try:
@@ -297,27 +311,36 @@ async def search_food(request: SearchRequest):
         total_carbs = 0
         total_fat = 0
 
-        # Step 2: Fetch all items in PARALLEL for maximum speed
-        tasks = [_search_food_with_retry(item) for item in items]
+        # Step 2: Fetch all items in PARALLEL safely
+        tasks = [safe_fetch(item) for item in items]
         responses = await asyncio.gather(*tasks)
 
-        # Step 3: Aggregate the data safely
-        for item, (text_output, parsed) in zip(items, responses):
-            if parsed.get("calories") is None:
-                raise ValueError(f"Failed to estimate calories for: {item}")
+        # Step 3: Aggregate the data (ignoring items that failed)
+        for item, parsed in responses:
+            if not parsed or parsed.get("calories") is None:
+                continue  # Skip the broken item, but keep the rest of the meal!
+
+            # Default to the item name if AI forgets to name it
+            final_name = parsed.get("dish_name")
+            if not final_name:
+                final_name = item.title()
 
             results.append({
-                "item": parsed.get("dish_name", item),
-                "calories": parsed.get("calories"),
-                "protein_g": parsed.get("protein_g"),
-                "carbs_g": parsed.get("carbs_g"),
-                "fat_g": parsed.get("fat_g")
+                "item": final_name,
+                "calories": parsed.get("calories", 0),
+                "protein_g": parsed.get("protein_g", 0),
+                "carbs_g": parsed.get("carbs_g", 0),
+                "fat_g": parsed.get("fat_g", 0)
             })
 
             total_calories += parsed.get("calories", 0)
             total_protein += parsed.get("protein_g", 0)
             total_carbs += parsed.get("carbs_g", 0)
             total_fat += parsed.get("fat_g", 0)
+
+        # If EVERY item failed, then we throw an error
+        if not results:
+            raise HTTPException(status_code=500, detail="Failed to analyze the food items. Try a simpler query.")
 
         # Step 4: Return the structured JSON to the frontend
         return {
