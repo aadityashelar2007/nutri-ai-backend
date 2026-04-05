@@ -3,15 +3,12 @@ import re
 import base64
 import io
 import json
-import requests
 import asyncio
 from PIL import Image
 from fastapi import FastAPI, UploadFile, File, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from dotenv import load_dotenv
 from openai import OpenAI
-from requests.adapters import HTTPAdapter
-from urllib3.util.retry import Retry
 from pydantic import BaseModel
 from typing import List
 
@@ -39,7 +36,7 @@ client = OpenAI(
     timeout=30.0
 )
 
-MODEL_NAME = os.getenv("OPENROUTER_MODEL", "mistralai/mistral-7b-instruct:free")
+MODEL_NAME = "meta-llama/llama-3.2-11b-vision-instruct:free"
 MAX_IMAGE_SIZE = 10 * 1024 * 1024  # 10MB limit
 
 def compress_image(image_bytes: bytes) -> tuple[str, str]:
@@ -170,17 +167,13 @@ async def _analyze_food_with_retry(base64_image: str, mime_type: str, max_retrie
 @app.post("/analyze-food")
 async def analyze_food(file: UploadFile = File(...)):
     try:
-        # Validate file size
-        if file.size and file.size > MAX_IMAGE_SIZE:
-            raise HTTPException(status_code=413, detail=f"File too large. Max size: {MAX_IMAGE_SIZE // 1024 // 1024}MB")
-        
         # Validate file type
         if file.content_type not in ["image/jpeg", "image/png", "image/gif", "image/webp"]:
             raise HTTPException(status_code=400, detail="Invalid file type. Only JPEG, PNG, GIF, WebP allowed.")
         
         image_bytes = await file.read()
         
-        # Double-check size after reading
+        # Validate file size after reading
         if len(image_bytes) > MAX_IMAGE_SIZE:
             raise HTTPException(status_code=413, detail=f"File too large. Max size: {MAX_IMAGE_SIZE // 1024 // 1024}MB")
         
