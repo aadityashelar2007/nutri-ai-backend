@@ -342,7 +342,7 @@ async def search_food(request: SearchRequest):
         if not results:
             raise HTTPException(status_code=500, detail="Failed to analyze the food items. Try a simpler query.")
 
-        # Step 4: Return the structured JSON to the frontend
+        # Step 4: Return the structured JSON for our NEW frontend
         return {
             "success": True, 
             "items": results,
