@@ -36,7 +36,7 @@ client = OpenAI(
     timeout=30.0
 )
 
-MODEL_NAME = "meta-llama/llama-3.2-11b-vision-instruct:free"
+MODEL_NAME = "openrouter/auto"
 MAX_IMAGE_SIZE = 10 * 1024 * 1024  # 10MB limit
 
 def compress_image(image_bytes: bytes) -> tuple[str, str]:
