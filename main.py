@@ -32,17 +32,10 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Configure session with retry logic
-http_session = requests.Session()
-retry = Retry(total=2, backoff_factor=0.5, status_forcelist=[429, 500, 502, 503, 504])
-adapter = HTTPAdapter(max_retries=retry)
-http_session.mount('http://', adapter)
-http_session.mount('https://', adapter)
-
 client = OpenAI(
     base_url="https://openrouter.ai/api/v1",
     api_key=api_key,
-    http_client=http_session,
+    max_retries=2,  # This natively handles all the retries for you!
     timeout=30.0
 )
 
