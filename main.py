@@ -108,9 +108,9 @@ def split_food_items(query: str) -> list[str]:
     for part in parts:
         part = part.strip()
 
-        # Handle "with" smartly
+        # Handle "with" smartly using exact word boundaries (\b)
         if " with " in part:
-            if any(drink in part for drink in ["milk", "tea", "coffee", "coke", "juice", "lassi"]):
+            if any(re.search(rf"\b{drink}\b", part) for drink in ["milk", "tea", "coffee", "coke", "juice", "lassi"]):
                 sub_parts = part.split(" with ")
                 final_items.extend([p.strip() for p in sub_parts if p.strip()])
             else:
@@ -283,10 +283,13 @@ async def search_food(request: SearchRequest):
         if len(request.query) > 500:
             raise HTTPException(status_code=400, detail="Query too long (max 500 characters)")
         
-        # Sanitize input to prevent prompt injection
         sanitized_query = request.query.strip()[:500]
         
+        # Step 1: Parse the string into separate items
         items = split_food_items(sanitized_query)
+        
+        if not items:
+            raise HTTPException(status_code=400, detail="Could not detect food items")
 
         results = []
         total_calories = 0
@@ -294,9 +297,12 @@ async def search_food(request: SearchRequest):
         total_carbs = 0
         total_fat = 0
 
-        for item in items:
-            text_output, parsed = await _search_food_with_retry(item)
+        # Step 2: Fetch all items in PARALLEL for maximum speed
+        tasks = [_search_food_with_retry(item) for item in items]
+        responses = await asyncio.gather(*tasks)
 
+        # Step 3: Aggregate the data safely
+        for item, (text_output, parsed) in zip(items, responses):
             if parsed.get("calories") is None:
                 raise ValueError(f"Failed to estimate calories for: {item}")
 
@@ -313,8 +319,9 @@ async def search_food(request: SearchRequest):
             total_carbs += parsed.get("carbs_g", 0)
             total_fat += parsed.get("fat_g", 0)
 
+        # Step 4: Return the structured JSON to the frontend
         return {
-            "success": True,
+            "success": True, 
             "items": results,
             "total": {
                 "calories": round(total_calories, 2),
