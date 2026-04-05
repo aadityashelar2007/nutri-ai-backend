@@ -97,6 +97,17 @@ def parse_nutrition_response(text: str) -> dict:
     return parsed
 
 
+def split_food_items(query: str) -> list[str]:
+    # Split on common separators
+    separators = r"\+|,| and | with "
+    parts = re.split(separators, query.lower())
+    
+    # Clean items
+    items = [p.strip() for p in parts if p.strip()]
+    
+    return items
+
+
 # ── ANALYZE FOOD ENDPOINT ─────────────────────────────────
 async def _analyze_food_with_retry(base64_image: str, mime_type: str, max_retries: int = 2):
     """Helper function to analyze food with retry logic"""
@@ -262,8 +273,37 @@ async def search_food(request: SearchRequest):
         # Sanitize input to prevent prompt injection
         sanitized_query = request.query.strip()[:500]
         
-        text_output, parsed = await _search_food_with_retry(sanitized_query)
-        return {"success": True, "raw_response": text_output, "parsed": parsed}
+        items = split_food_items(sanitized_query)
+
+        results = []
+        total_calories = 0
+        total_protein = 0
+        total_carbs = 0
+        total_fat = 0
+
+        for item in items:
+            text_output, parsed = await _search_food_with_retry(item)
+
+            results.append({
+                "item": item,
+                "data": parsed
+            })
+
+            total_calories += parsed.get("calories", 0)
+            total_protein += parsed.get("protein_g", 0)
+            total_carbs += parsed.get("carbs_g", 0)
+            total_fat += parsed.get("fat_g", 0)
+
+        return {
+            "success": True,
+            "items": results,
+            "total": {
+                "calories": round(total_calories, 2),
+                "protein_g": round(total_protein, 2),
+                "carbs_g": round(total_carbs, 2),
+                "fat_g": round(total_fat, 2),
+            }
+        }
     
     except HTTPException:
         raise
