@@ -98,14 +98,27 @@ def parse_nutrition_response(text: str) -> dict:
 
 
 def split_food_items(query: str) -> list[str]:
-    # Split on common separators
-    separators = r"\+|,| and | with "
-    parts = re.split(separators, query.lower())
-    
-    # Clean items
-    items = [p.strip() for p in parts if p.strip()]
-    
-    return items
+    query = query.lower()
+
+    # Always split on strong separators
+    parts = re.split(r"\+|,| and ", query)
+
+    final_items = []
+
+    for part in parts:
+        part = part.strip()
+
+        # Handle "with" smartly
+        if " with " in part:
+            if any(drink in part for drink in ["milk", "tea", "coffee", "coke", "juice", "lassi"]):
+                sub_parts = part.split(" with ")
+                final_items.extend([p.strip() for p in sub_parts if p.strip()])
+            else:
+                final_items.append(part)
+        else:
+            final_items.append(part)
+
+    return final_items
 
 
 # ── ANALYZE FOOD ENDPOINT ─────────────────────────────────
@@ -284,9 +297,15 @@ async def search_food(request: SearchRequest):
         for item in items:
             text_output, parsed = await _search_food_with_retry(item)
 
+            if parsed.get("calories") is None:
+                raise ValueError(f"Failed to estimate calories for: {item}")
+
             results.append({
-                "item": item,
-                "data": parsed
+                "item": parsed.get("dish_name", item),
+                "calories": parsed.get("calories"),
+                "protein_g": parsed.get("protein_g"),
+                "carbs_g": parsed.get("carbs_g"),
+                "fat_g": parsed.get("fat_g")
             })
 
             total_calories += parsed.get("calories", 0)
